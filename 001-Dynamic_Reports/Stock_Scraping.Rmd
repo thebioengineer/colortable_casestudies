@@ -1,0 +1,103 @@
+---
+title: "Stock Report"
+author: "Ellis Hughes"
+date: "4/22/2020"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+  word_document: default
+params:
+  from: '2017-01-01'
+  stock:
+    value: AAPL
+  to: '2018-03-01'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, echo = FALSE, warning = FALSE, message = FALSE)
+suppressPackageStartupMessages({
+  library(colortable)
+  library(tidyverse)
+  library(quantmod)
+})
+
+stocks <- getSymbols(
+  params$stock,
+  from = params$from,
+  to = params$to,
+  warnings = FALSE,
+  auto.assign = FALSE
+)
+
+init_open <- round(as.numeric(stocks[1,1]),2)
+final_close <- round(as.numeric(stocks[nrow(stocks),4]),2)
+stock_up <- final_close > init_open
+
+green <- "forestgreen"
+red <- "red"
+
+```
+
+
+`r cat(paste("## Stock Report for",params$stock))`
+
+This report contains analysis of stock prices of `r params$stock` from `r params$from` to `r params$to`. 
+
+At the end of this period, the stock was trading at $`r color_vctr(final_close, text_color = ifelse(stock_up, green,red))`.
+
+# Key Values
+
+```{r table}
+
+daily_percent_change <- (as.numeric(stocks$AAPL.Close) - as.numeric(stocks$AAPL.Open)) / as.numeric(stocks$AAPL.Open) * 100
+
+
+average_change <- mean(daily_percent_change)
+most_increase <- max(daily_percent_change)
+date_most <-
+  as.character(as.Date(as.POSIXct(
+    attr(stocks[which.max(daily_percent_change), ], "index"), origin = "1970-01-01", tz = "UTC"
+  )))
+
+most_decrease <- min(daily_percent_change)
+date_min <-
+  as.character(as.Date(as.POSIXct(
+    attr(stocks[which.min(daily_percent_change), ], "index"), origin = "1970-01-01", tz = "UTC"
+  )))
+
+
+data.frame(
+  "Description" = c(
+    "Opening Value",
+    "Average Daily RR (%)",
+    "Largest Increase",
+    "Largest Decrease"
+  ),
+  "Value" = color_vctr(
+    as.character(c(init_open, round(average_change,5), round(most_increase,3), round(most_decrease,3))),
+    text_color = c(
+      NA,
+      ifelse(average_change > 0, green, red),
+      green,
+      red
+    )
+  ),
+  "Date" = c("", "", date_most, date_min)
+)
+
+
+
+```
+
+# Performance Over Time
+
+```{r Chart, fig.height = 4, fig.align="center"}
+
+chart_Series(stocks)
+
+```
+
+
+
+
